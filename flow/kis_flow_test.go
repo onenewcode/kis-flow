@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestNewKisFlow(t *testing.T) {
+func TestNewKisFlowData(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. 创建2个KisFunction配置实例
@@ -26,7 +26,7 @@ func TestNewKisFlow(t *testing.T) {
 		panic("myFuncConfig1 is nil")
 	}
 
-	myFuncConfig2 := config.NewFuncConfig("funcName2", common.V, &source2, nil)
+	myFuncConfig2 := config.NewFuncConfig("funcName2", common.E, &source2, nil)
 	if myFuncConfig2 == nil {
 		panic("myFuncConfig2 is nil")
 	}
@@ -45,7 +45,12 @@ func TestNewKisFlow(t *testing.T) {
 		panic(err)
 	}
 
-	// 5. 执行flow1
+	// 5. 提交原始数据
+	_ = flow1.CommitRow("This is Data1 from Test")
+	_ = flow1.CommitRow("This is Data2 from Test")
+	_ = flow1.CommitRow("This is Data3 from Test")
+
+	// 6. 执行flow1
 	if err := flow1.Run(ctx); err != nil {
 		panic(err)
 	}
