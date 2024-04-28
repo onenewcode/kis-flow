@@ -5,11 +5,11 @@ import (
 	"errors"
 	"kis-flow/common"
 	"kis-flow/config"
-	id2 "kis-flow/id"
+	"kis-flow/id"
 	"kis-flow/kis"
 )
 
-// kis_function的方法的父类，通过匿名组合
+// 类似链表结构，方便进行链式计算
 type BaseFunction struct {
 	// Id , KisFunction的实例ID，用于KisFlow内部区分不同的实例对象
 	Id     string
@@ -90,10 +90,7 @@ func (base *BaseFunction) GetFlow() kis.Flow {
 }
 
 func (base *BaseFunction) CreateId() {
-	base.Id = id2.KisID(common.KisIdTypeFunction)
-}
-func (base *BaseFunction) CreateId() {
-	base.Id = id2.KisID(common.KisIdTypeFunction)
+	base.Id = id.KisID(common.KisIdTypeFunction)
 }
 
 // NewKisFunction 创建一个NsFunction
