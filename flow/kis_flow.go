@@ -250,6 +250,17 @@ func (flow *KisFlow) clearData(data common.KisDataMap) {
 		delete(data, k)
 	}
 }
+func (flow *KisFlow) GetName() string {
+	return flow.Name
+}
+
+func (flow *KisFlow) GetThisFunction() kis.Function {
+	return flow.ThisFunction
+}
+
+func (flow *KisFlow) GetThisFuncConf() *config.KisFuncConfig {
+	return flow.ThisFunction.GetConfig()
+}
 
 // NewKisFlow 创建一个KisFlow.
 func NewKisFlow(conf *config.KisFlowConfig) kis.Flow {
