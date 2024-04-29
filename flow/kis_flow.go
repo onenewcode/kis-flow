@@ -22,18 +22,19 @@ type KisFlow struct {
 	Conf *config.KisFlowConfig // Flow配置策略
 
 	// Function列表
-	Funcs          map[string]kis.Function // 当前flow拥有的全部管理的全部Function对象, key: FunctionID
+	Funcs          map[string]kis.Function // 当前flow拥有的全部管理的全部Function对象, key: FunctionName
 	FlowHead       kis.Function            // 当前Flow所拥有的Function列表表头
 	FlowTail       kis.Function            // 当前Flow所拥有的Function列表表尾
 	flock          sync.RWMutex            // 管理链表插入读写的锁
 	ThisFunction   kis.Function            // Flow当前正在执行的KisFunction对象
-	ThisFunctionId string                  // 当前执行到的Function ID (策略配置ID)
-	PrevFunctionId string                  // 当前执行到的Function 上一层FunctionID(策略配置ID)
+	ThisFunctionId string                  // 当前执行到的Function ID
+	PrevFunctionId string                  // 当前执行到的Function 上一层FunctionID
 
 	// Function列表参数
-	funcParams map[string]config.FParam // flow在当前Function的自定义固定配置参数,Key:function的实例NsID, value:FParam
+	funcParams map[string]config.FParam // flow在当前Function的自定义固定配置参数,Key:function的实例KisID, value:FParam
 	fplock     sync.RWMutex             // 管理funcParams的读写锁
-	// ++++++++ 数据 ++++++++++
+
+	// 数据
 	buffer common.KisRowArr  // 用来临时存放输入字节数据的内部Buf, 一条数据为interface{}, 多条数据为[]interface{} 也就是KisBatch
 	data   common.KisDataMap // 流式计算各个层级的数据源
 	inPut  common.KisRowArr  // 当前Function的计算输入数据
@@ -94,21 +95,18 @@ func (flow *KisFlow) appendFunc(function kis.Function, fParam config.FParam) err
 		// 首次添加节点
 		flow.FlowHead = function
 		flow.FlowTail = function
-
 		function.SetN(nil)
 		function.SetP(nil)
-
 	} else {
 		// 将function插入到链表的尾部
 		function.SetP(flow.FlowTail)
 		function.SetN(nil)
-
 		flow.FlowTail.SetN(function)
 		flow.FlowTail = function
 	}
 
-	//将Function ID 详细Hash对应关系添加到flow对象中
-	flow.Funcs[function.GetId()] = function
+	//将Function Name 详细Hash对应关系添加到flow对象中
+	flow.Funcs[function.GetConfig().FName] = function
 
 	//先添加function 默认携带的Params参数
 	params := make(config.FParam)
@@ -304,6 +302,20 @@ func (flow *KisFlow) GetConnConf() (*config.KisConnConfig, error) {
 		return conn.GetConfig(), nil
 	} else {
 		return nil, errors.New("GetConnConf(): Connector is nil")
+	}
+}
+
+func (flow *KisFlow) GetConfig() *config.KisFlowConfig {
+	return flow.Conf
+}
+
+// GetFuncConfigByName 得到当前Flow的配置
+func (flow *KisFlow) GetFuncConfigByName(funcName string) *config.KisFuncConfig {
+	if f, ok := flow.Funcs[funcName]; ok {
+		return f.GetConfig()
+	} else {
+		log.Logger().ErrorF("GetFuncConfigByName(): Function %s not found", funcName)
+		return nil
 	}
 }
 
