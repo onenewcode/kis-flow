@@ -10,6 +10,16 @@ type KisFunctionV struct {
 	BaseFunction
 }
 
+func (f *KisFunctionV) AddConnector(conn kis.Connector) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f *KisFunctionV) GetConnector() kis.Connector {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (f *KisFunctionV) Call(ctx context.Context, flow kis.Flow) error {
 	log.Logger().InfoF("KisFunctionV, flow = %+v\n", flow)
 

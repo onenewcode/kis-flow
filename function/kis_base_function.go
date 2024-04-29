@@ -17,7 +17,10 @@ type BaseFunction struct {
 
 	// flow
 	Flow kis.Flow //上下文环境KisFlow
-
+	// ++++++++++++++
+	// connector
+	connector kis.Connector
+	// ++++++++++++++
 	// link
 	N kis.Function //下一个流计算Function
 	P kis.Function //上一个流计算Function

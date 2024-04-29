@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"kis-flow/common"
 	"kis-flow/log"
 )
@@ -29,6 +30,30 @@ type KisFuncConfig struct {
 	FMode   string        `yaml:"fmode"`
 	Source  KisSource     `yaml:"source"`
 	Option  KisFuncOption `yaml:"option"`
+	// ++++++++++
+	connConf *KisConnConfig
+}
+
+func (fConf *KisFuncConfig) AddConnConfig(cConf *KisConnConfig) error {
+	if cConf == nil {
+		return errors.New("KisConnConfig is nil")
+	}
+
+	// Function需要和Connector进行关联
+	fConf.connConf = cConf
+
+	// Connector需要和Function进行关联
+	_ = cConf.WithFunc(fConf)
+
+	return nil
+}
+
+func (fConf *KisFuncConfig) GetConnConfig() (*KisConnConfig, error) {
+	if fConf.connConf == nil {
+		return nil, errors.New("KisFuncConfig.connConf not set")
+	}
+
+	return fConf.connConf, nil
 }
 
 // NewFuncConfig 创建一个Function策略配置对象, 用于描述一个KisFunction信息
