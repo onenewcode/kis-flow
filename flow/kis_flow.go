@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/patrickmn/go-cache"
 	"kis-flow/common"
 	"kis-flow/config"
 	"kis-flow/conn"
@@ -12,6 +13,7 @@ import (
 	"kis-flow/kis"
 	"kis-flow/log"
 	"sync"
+	"time"
 )
 
 // KisFlow 用于贯穿整条流式计算的上下文环境
@@ -42,6 +44,8 @@ type KisFlow struct {
 	action kis.Action // 当前Flow所携带的Action动作
 	// +++++++++
 	abort bool // 是否中断Flow
+	// flow的本地缓存
+	cache *cache.Cache // Flow流的临时缓存上线文环境
 }
 
 // Link 将Function链接到Flow中
@@ -81,7 +85,8 @@ func (flow *KisFlow) Link(fConf *config.KisFuncConfig, fParams config.FParam) er
 	if err := flow.appendFunc(f, fParams); err != nil {
 		return err
 	}
-
+	// 初始化本地缓存
+	flow.cache = cache.New(cache.NoExpiration, common.DeFaultFlowCacheCleanUp*time.Minute)
 	return nil
 }
 
@@ -434,4 +439,20 @@ func (flow *KisFlow) commitReuseData(ctx context.Context) error {
 	log.Logger().DebugFX(ctx, " ====> After commitReuseData, flow_name = %s, flow_id = %s\nAll Level Data =\n %+v\n", flow.Name, flow.Id, flow.data)
 
 	return nil
+}
+func (flow *KisFlow) GetCacheData(key string) interface{} {
+
+	if data, found := flow.cache.Get(key); found {
+		return data
+	}
+
+	return nil
+}
+
+func (flow *KisFlow) SetCacheData(key string, value interface{}, Exp time.Duration) {
+	if Exp == common.DefaultExpiration {
+		flow.cache.Set(key, value, cache.DefaultExpiration)
+	} else {
+		flow.cache.Set(key, value, Exp)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"kis-flow/common"
 	"kis-flow/config"
+	"time"
 )
 
 type Flow interface {
@@ -31,4 +32,8 @@ type Flow interface {
 	GetConnConf() (*config.KisConnConfig, error) //  --- KisFlow Action ---
 	// Next 当前Flow执行到的Function进入下一层Function所携带的Action动作
 	Next(acts ...ActionFunc) error
+	// GetCacheData 得到当前Flow的缓存数据
+	GetCacheData(key string) interface{}
+	// SetCacheData 设置当前Flow的缓存数据
+	SetCacheData(key string, value interface{}, Exp time.Duration)
 }
