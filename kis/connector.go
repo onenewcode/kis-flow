@@ -18,4 +18,7 @@ type Connector interface {
 	GetName() string
 	// GetConfig 获取Connector的配置信息
 	GetConfig() *config.KisConnConfig
+	GetMetaData(key string) interface{}
+	// SetMetaData 设置当前Connector的临时数据
+	SetMetaData(key string, value interface{})
 }
