@@ -36,4 +36,8 @@ type Flow interface {
 	GetCacheData(key string) interface{}
 	// SetCacheData 设置当前Flow的缓存数据
 	SetCacheData(key string, value interface{}, Exp time.Duration)
+	// GetMetaData 得到当前Flow的临时数据
+	GetMetaData(key string) interface{}
+	// SetMetaData 设置当前Flow的临时数据
+	SetMetaData(key string, value interface{})
 }

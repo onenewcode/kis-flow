@@ -46,6 +46,9 @@ type KisFlow struct {
 	abort bool // 是否中断Flow
 	// flow的本地缓存
 	cache *cache.Cache // Flow流的临时缓存上线文环境
+	// flow的metaData
+	metaData map[string]interface{} // Flow的自定义临时数据
+	mLock    sync.RWMutex           // 管理metaData的读写锁
 }
 
 // Link 将Function链接到Flow中
@@ -335,7 +338,8 @@ func NewKisFlow(conf *config.KisFlowConfig) kis.Flow {
 
 	// ++++++++ 数据data +++++++
 	flow.data = make(common.KisDataMap)
-
+	// 初始化临时数据
+	flow.metaData = make(map[string]interface{})
 	return flow
 }
 
@@ -455,4 +459,25 @@ func (flow *KisFlow) SetCacheData(key string, value interface{}, Exp time.Durati
 	} else {
 		flow.cache.Set(key, value, Exp)
 	}
+}
+
+// GetMetaData 得到当前Flow对象的临时数据
+func (flow *KisFlow) GetMetaData(key string) interface{} {
+	flow.mLock.RLock()
+	defer flow.mLock.RUnlock()
+
+	data, ok := flow.metaData[key]
+	if !ok {
+		return nil
+	}
+
+	return data
+}
+
+// SetMetaData 设置当前Flow对象的临时数据
+func (flow *KisFlow) SetMetaData(key string, value interface{}) {
+	flow.mLock.Lock()
+	defer flow.mLock.Unlock()
+
+	flow.metaData[key] = value
 }

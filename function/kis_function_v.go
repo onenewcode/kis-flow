@@ -10,14 +10,13 @@ type KisFunctionV struct {
 	BaseFunction
 }
 
-func (f *KisFunctionV) AddConnector(conn kis.Connector) error {
-	//TODO implement me
-	panic("implement me")
-}
+func NewKisFunctionV() kis.Function {
+	f := new(KisFunctionV)
 
-func (f *KisFunctionV) GetConnector() kis.Connector {
-	//TODO implement me
-	panic("implement me")
+	// 初始化metaData
+	f.metaData = make(map[string]interface{})
+
+	return f
 }
 
 func (f *KisFunctionV) Call(ctx context.Context, flow kis.Flow) error {
