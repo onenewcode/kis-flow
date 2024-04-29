@@ -38,6 +38,10 @@ type KisFlow struct {
 	buffer common.KisRowArr  // 用来临时存放输入字节数据的内部Buf, 一条数据为interface{}, 多条数据为[]interface{} 也就是KisBatch
 	data   common.KisDataMap // 流式计算各个层级的数据源
 	inPut  common.KisRowArr  // 当前Function的计算输入数据
+	// KisFlow Action
+	action kis.Action // 当前Flow所携带的Action动作
+	// +++++++++
+	abort bool // 是否中断Flow
 }
 
 // Link 将Function链接到Flow中
@@ -132,13 +136,13 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 	var fn kis.Function
 
 	fn = flow.FlowHead
+	flow.abort = false
 
 	if flow.Conf.Status == int(common.FlowDisable) {
 		//flow被配置关闭
 		return nil
 	}
 
-	// ========= 数据流 新增 ===========
 	// 因为此时还没有执行任何Function, 所以PrevFunctionId为FirstVirtual 因为没有上一层Function
 	flow.PrevFunctionId = common.FunctionIdFirstVirtual
 
@@ -146,12 +150,10 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 	if err := flow.commitSrcData(ctx); err != nil {
 		return err
 	}
-	// ========= 数据流 新增 ===========
 
 	//流式链式调用
-	for fn != nil {
+	for fn != nil && flow.abort == false {
 
-		// ========= 数据流 新增 ===========
 		// flow记录当前执行到的Function 标记
 		fid := fn.GetId()
 		flow.ThisFunction = fn
@@ -164,24 +166,16 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 		} else {
 			flow.inPut = inputData
 		}
-		// ========= 数据流 新增 ===========
 
 		if err := fn.Call(ctx, flow); err != nil {
 			//Error
 			return err
 		} else {
 			//Success
-
-			// ========= 数据流 新增 ===========
-			if err := flow.commitCurData(ctx); err != nil {
+			fn, err = flow.dealAction(ctx, fn)
+			if err != nil {
 				return err
 			}
-
-			// 更新上一层FuncitonId游标
-			flow.PrevFunctionId = flow.ThisFunctionId
-			// ========= 数据流 新增 ===========
-
-			fn = fn.Next()
 		}
 	}
 
@@ -245,23 +239,24 @@ func (flow *KisFlow) getCurData() (common.KisRowArr, error) {
 // commitCurData 提交Flow当前执行Function的结果数据
 func (flow *KisFlow) commitCurData(ctx context.Context) error {
 
-	//判断本层计算是否有结果数据,如果没有则退出本次Flow Run循环
+	// 判断本层计算是否有结果数据,如果没有则退出本次Flow Run循环
 	if len(flow.buffer) == 0 {
+		flow.abort = true
 		return nil
 	}
 
 	// 制作批量数据batch
 	batch := make(common.KisRowArr, 0, len(flow.buffer))
 
-	//如果strBuf为空，则没有添加任何数据
+	// 如果strBuf为空，则没有添加任何数据
 	for _, row := range flow.buffer {
 		batch = append(batch, row)
 	}
 
-	//将本层计算的缓冲数据提交到本层结果数据中
+	// 将本层计算的缓冲数据提交到本层结果数据中
 	flow.data[flow.ThisFunctionId] = batch
 
-	//清空缓冲Buf
+	// 清空缓冲Buf
 	flow.buffer = flow.buffer[0:0]
 
 	log.Logger().DebugFX(ctx, " ====> After commitCurData, flow_name = %s, flow_id = %s\nAll Level Data =\n %+v\n", flow.Name, flow.Id, flow.data)
@@ -337,4 +332,106 @@ func NewKisFlow(conf *config.KisFlowConfig) kis.Flow {
 	flow.data = make(common.KisDataMap)
 
 	return flow
+}
+
+// Next 当前Flow执行到的Function进入下一层Function所携带的Action动作
+func (flow *KisFlow) Next(acts ...kis.ActionFunc) error {
+
+	// 加载Function FaaS 传递的 Action动作
+	flow.action = kis.LoadActions(acts)
+
+	return nil
+}
+
+// dealAction  处理Action，决定接下来Flow的流程走向
+func (flow *KisFlow) dealAction(ctx context.Context, fn kis.Function) (kis.Function, error) {
+
+	// DataReuse Action
+	if flow.action.DataReuse {
+		if err := flow.commitReuseData(ctx); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := flow.commitCurData(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// ForceEntryNext Action
+	if flow.action.ForceEntryNext {
+		if err := flow.commitVoidData(ctx); err != nil {
+			return nil, err
+		}
+		flow.abort = false
+	}
+
+	// ++++++++++++++++++++++++++++++++
+	// JumpFunc Action
+	if flow.action.JumpFunc != "" {
+		if _, ok := flow.Funcs[flow.action.JumpFunc]; !ok {
+			//当前JumpFunc不在flow中
+			return nil, errors.New(fmt.Sprintf("Flow Jump -> %s is not in Flow", flow.action.JumpFunc))
+		}
+
+		jumpFunction := flow.Funcs[flow.action.JumpFunc]
+		// 更新上层Function
+		flow.PrevFunctionId = jumpFunction.GetPrevId()
+		fn = jumpFunction
+
+		// 如果设置跳跃，强制跳跃
+		flow.abort = false
+		// ++++++++++++++++++++++++++++++++
+
+	} else {
+
+		// 更新上一层 FuncitonId 游标
+		flow.PrevFunctionId = flow.ThisFunctionId
+		fn = fn.Next()
+	}
+
+	// Abort Action 强制终止
+	if flow.action.Abort {
+		flow.abort = true
+	}
+
+	// 清空Action
+	flow.action = kis.Action{}
+
+	return fn, nil
+}
+
+func (flow *KisFlow) commitVoidData(ctx context.Context) error {
+	if len(flow.buffer) != 0 {
+		return nil
+	}
+
+	// 制作空数据
+	batch := make(common.KisRowArr, 0)
+
+	// 将本层计算的缓冲数据提交到本层结果数据中
+	flow.data[flow.ThisFunctionId] = batch
+
+	log.Logger().DebugFX(ctx, " ====> After commitVoidData, flow_name = %s, flow_id = %s\nAll Level Data =\n %+v\n", flow.Name, flow.Id, flow.data)
+
+	return nil
+}
+
+// commitReuseData
+func (flow *KisFlow) commitReuseData(ctx context.Context) error {
+
+	// 判断上层是否有结果数据, 如果没有则退出本次Flow Run循环
+	if len(flow.data[flow.PrevFunctionId]) == 0 {
+		flow.abort = true
+		return nil
+	}
+
+	// 本层结果数据等于上层结果数据(复用上层结果数据到本层)
+	flow.data[flow.ThisFunctionId] = flow.data[flow.PrevFunctionId]
+
+	// 清空缓冲Buf (如果是ReuseData选项，那么提交的全部数据，都将不会携带到下一层)
+	flow.buffer = flow.buffer[0:0]
+
+	log.Logger().DebugFX(ctx, " ====> After commitReuseData, flow_name = %s, flow_id = %s\nAll Level Data =\n %+v\n", flow.Name, flow.Id, flow.data)
+
+	return nil
 }

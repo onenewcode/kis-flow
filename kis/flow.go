@@ -28,5 +28,7 @@ type Flow interface {
 	// +++++++++++++++++++++++++++++++++
 	GetConnector() (Connector, error)
 	// GetConnConf 得到当前正在执行的Function的Connector的配置
-	GetConnConf() (*config.KisConnConfig, error)
+	GetConnConf() (*config.KisConnConfig, error) //  --- KisFlow Action ---
+	// Next 当前Flow执行到的Function进入下一层Function所携带的Action动作
+	Next(acts ...ActionFunc) error
 }
