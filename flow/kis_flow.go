@@ -481,3 +481,35 @@ func (flow *KisFlow) SetMetaData(key string, value interface{}) {
 
 	flow.metaData[key] = value
 }
+
+// Fork 得到Flow的一个副本(深拷贝)
+func (flow *KisFlow) Fork(ctx context.Context) kis.Flow {
+
+	config := flow.Conf
+
+	// 通过之前的配置生成一个新的Flow
+	newFlow := NewKisFlow(config)
+
+	for _, fp := range flow.Conf.Flows {
+		if _, ok := flow.funcParams[flow.Funcs[fp.FuncName].GetId()]; !ok {
+			//当前function没有配置Params
+			newFlow.Link(flow.Funcs[fp.FuncName].GetConfig(), nil)
+		} else {
+			//当前function有配置Params
+			newFlow.Link(flow.Funcs[fp.FuncName].GetConfig(), fp.Params)
+		}
+	}
+
+	log.Logger().DebugFX(ctx, "=====>Flow Fork, oldFlow.funcParams = %+v\n", flow.funcParams)
+	log.Logger().DebugFX(ctx, "=====>Flow Fork, newFlow.funcParams = %+v\n", newFlow.GetFuncParamsAllFuncs())
+
+	return newFlow
+}
+
+// GetFuncParamsAllFuncs 得到Flow中所有Function的FuncParams，取出全部Key-Value
+func (flow *KisFlow) GetFuncParamsAllFuncs() map[string]config.FParam {
+	flow.fplock.RLock()
+	defer flow.fplock.RUnlock()
+
+	return flow.funcParams
+}

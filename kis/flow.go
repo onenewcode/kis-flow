@@ -24,9 +24,9 @@ type Flow interface {
 	// GetThisFunction 得到当前正在执行的Function
 	GetThisFunction() Function
 	// GetThisFuncConf 得到当前正在执行的Function的配置
-	GetThisFuncConf() *config.KisFuncConfig
+	GetThisFuncConf() *config.KisFuncConfig // GetFuncParamsAllFuncs 得到Flow中所有Function的FuncParams，取出全部Key-Value
+	GetFuncParamsAllFuncs() map[string]config.FParam
 	// GetConnector 得到当前正在执行的Function的Connector
-	// +++++++++++++++++++++++++++++++++
 	GetConnector() (Connector, error)
 	// GetConnConf 得到当前正在执行的Function的Connector的配置
 	GetConnConf() (*config.KisConnConfig, error) //  --- KisFlow Action ---
@@ -40,4 +40,6 @@ type Flow interface {
 	GetMetaData(key string) interface{}
 	// SetMetaData 设置当前Flow的临时数据
 	SetMetaData(key string, value interface{})
+	// Fork 得到Flow的一个副本(深拷贝)
+	Fork(ctx context.Context) Flow
 }
