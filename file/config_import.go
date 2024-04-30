@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"kis-flow/common"
 	"kis-flow/config"
 	"kis-flow/flow"
 	"kis-flow/kis"
+	"kis-flow/metrics"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,22 +22,22 @@ type allConfig struct {
 
 // kisTypeFlowConfigure 解析Flow配置文件，yaml格式
 func kisTypeFlowConfigure(all *allConfig, confData []byte, fileName string, kisType interface{}) error {
-	flow := new(config.KisFlowConfig)
-	if ok := yaml.Unmarshal(confData, flow); ok != nil {
+	flowCfg := new(config.KisFlowConfig)
+	if ok := yaml.Unmarshal(confData, flowCfg); ok != nil {
 		return errors.New(fmt.Sprintf("%s has wrong format kisType = %s", fileName, kisType))
 	}
 
 	// 如果FLow状态为关闭，则不做配置加载
-	if common.KisOnOff(flow.Status) == common.FlowDisable {
+	if common.KisOnOff(flowCfg.Status) == common.FlowDisable {
 		return nil
 	}
 
-	if _, ok := all.Flows[flow.FlowName]; ok {
-		return errors.New(fmt.Sprintf("%s set repeat flow_id:%s", fileName, flow.FlowName))
+	if _, ok := all.Flows[flowCfg.FlowName]; ok {
+		return errors.New(fmt.Sprintf("%s set repeat flow_id:%s", fileName, flowCfg.FlowName))
 	}
 
 	// 加入配置集合中
-	all.Flows[flow.FlowName] = flow
+	all.Flows[flowCfg.FlowName] = flowCfg
 
 	return nil
 }
@@ -62,7 +62,7 @@ func kisTypeFuncConfigure(all *allConfig, confData []byte, fileName string, kisT
 func kisTypeConnConfigure(all *allConfig, confData []byte, fileName string, kisType interface{}) error {
 	conn := new(config.KisConnConfig)
 	if ok := yaml.Unmarshal(confData, conn); ok != nil {
-		return errors.New(fmt.Sprintf("%s is wrong format nsType = %s", fileName, kisType))
+		return errors.New(fmt.Sprintf("%s is wrong format kisType = %s", fileName, kisType))
 	}
 
 	if _, ok := all.Conns[conn.CName]; ok {
@@ -71,6 +71,19 @@ func kisTypeConnConfigure(all *allConfig, confData []byte, fileName string, kisT
 
 	// 加入配置集合中
 	all.Conns[conn.CName] = conn
+
+	return nil
+}
+
+// kisTypeGlobalConfigure 解析Global配置文件，yaml格式
+func kisTypeGlobalConfigure(confData []byte, fileName string, kisType interface{}) error {
+	// 全局配置
+	if ok := yaml.Unmarshal(confData, config.GlobalConfig); ok != nil {
+		return errors.New(fmt.Sprintf("%s is wrong format kisType = %s", fileName, kisType))
+	}
+
+	// 启动Metrics服务
+	metrics.RunMetrics()
 
 	return nil
 }
@@ -91,7 +104,7 @@ func parseConfigWalkYaml(loadPath string) (*allConfig, error) {
 		}
 
 		// 读取文件内容
-		confData, err := ioutil.ReadFile(filePath)
+		confData, err := os.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
@@ -114,8 +127,11 @@ func parseConfigWalkYaml(loadPath string) (*allConfig, error) {
 			case common.KisIdTypeFunction:
 				return kisTypeFuncConfigure(all, confData, filePath, kisType)
 
-			case common.KisIdTypeConnnector:
+			case common.KisIdTypeConnector:
 				return kisTypeConnConfigure(all, confData, filePath, kisType)
+
+			case common.KisIdTypeGlobal:
+				return kisTypeGlobalConfigure(confData, filePath, kisType)
 
 			default:
 				return errors.New(fmt.Sprintf("%s set wrong kistype %s", filePath, kisType))
@@ -128,6 +144,31 @@ func parseConfigWalkYaml(loadPath string) (*allConfig, error) {
 	}
 
 	return all, nil
+}
+
+func buildFlow(all *allConfig, fp config.KisFlowFunctionParam, newFlow kis.Flow, flowName string) error {
+	// 加载当前Flow依赖的Function
+	if funcConfig, ok := all.Funcs[fp.FuncName]; !ok {
+		return errors.New(fmt.Sprintf("FlowName [%s] need FuncName [%s], But has No This FuncName Config", flowName, fp.FuncName))
+	} else {
+		// flow add connector
+		if funcConfig.Option.CName != "" {
+			// 加载当前Function依赖的Connector
+			if connConf, ok := all.Conns[funcConfig.Option.CName]; !ok {
+				return errors.New(fmt.Sprintf("FuncName [%s] need ConnName [%s], But has No This ConnName Config", fp.FuncName, funcConfig.Option.CName))
+			} else {
+				// Function Config 关联 Connector Config
+				_ = funcConfig.AddConnConfig(connConf)
+			}
+		}
+
+		// flow add function
+		if err := newFlow.Link(funcConfig, fp.Params); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ConfigImportYaml 全盘解析配置文件，yaml格式
@@ -149,32 +190,8 @@ func ConfigImportYaml(loadPath string) error {
 			}
 		}
 
-		//将flow添加到FlowPool中
+		// 将flow添加到FlowPool中
 		kis.Pool().AddFlow(flowName, newFlow)
-	}
-
-	return nil
-}
-func buildFlow(all *allConfig, fp config.KisFlowFunctionParam, newFlow kis.Flow, flowName string) error {
-	//加载当前Flow依赖的Function
-	if funcConfig, ok := all.Funcs[fp.FuncName]; !ok {
-		return errors.New(fmt.Sprintf("FlowName [%s] need FuncName [%s], But has No This FuncName Config", flowName, fp.FuncName))
-	} else {
-		//flow add connector
-		if funcConfig.Option.CName != "" {
-			// 加载当前Function依赖的Connector
-			if connConf, ok := all.Conns[funcConfig.Option.CName]; !ok {
-				return errors.New(fmt.Sprintf("FuncName [%s] need ConnName [%s], But has No This ConnName Config", fp.FuncName, funcConfig.Option.CName))
-			} else {
-				// Function Config 关联 Connector Config
-				_ = funcConfig.AddConnConfig(connConf)
-			}
-		}
-
-		//flow add function
-		if err := newFlow.Link(funcConfig, fp.Params); err != nil {
-			return err
-		}
 	}
 
 	return nil

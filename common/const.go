@@ -2,13 +2,13 @@ package common
 
 import "time"
 
-// KisIdType 用户生成KisId的字符串前缀
+// 用户生成KisId的字符串前缀
 const (
-	KisIdTypeFlow       = "flow"
-	KisIdTypeConnnector = "conn"
-	KisIdTypeFunction   = "func"
-	KisIdTypeGlobal     = "global"
-	KisIdJoinChar       = "-"
+	KisIdTypeFlow      = "flow"
+	KisIdTypeConnector = "conn"
+	KisIdTypeFunction  = "func"
+	KisIdTypeGlobal    = "global"
+	KisIdJoinChar      = "-"
 )
 
 const (
@@ -57,9 +57,38 @@ const (
 	ES    KisConnType = "es"
 )
 
+// cache
 const (
 	// DeFaultFlowCacheCleanUp KisFlow中Flow对象Cache缓存默认的清理内存时间
-	DeFaultFlowCacheCleanUp = 5 //单位 min
+	DeFaultFlowCacheCleanUp = 5 // 单位 min
 	// DefaultExpiration 默认GoCahce时间 ，永久保存
 	DefaultExpiration time.Duration = 0
+)
+
+// metrics
+const (
+	METRICS_ROUTE string = "/metrics"
+
+	LABEL_FLOW_NAME     string = "flow_name"
+	LABEL_FLOW_ID       string = "flow_id"
+	LABEL_FUNCTION_NAME string = "func_name"
+	LABEL_FUNCTION_MODE string = "func_mode"
+
+	COUNTER_KISFLOW_DATA_TOTAL_NAME string = "kisflow_data_total"
+	COUNTER_KISFLOW_DATA_TOTAL_HELP string = "KisFlow全部Flow的数据总量"
+
+	GANGE_FLOW_DATA_TOTAL_NAME string = "flow_data_total"
+	GANGE_FLOW_DATA_TOTAL_HELP string = "KisFlow各个FlowID数据流的数据数量总量"
+
+	GANGE_FLOW_SCHE_CNTS_NAME string = "flow_schedule_cnts"
+	GANGE_FLOW_SCHE_CNTS_HELP string = "KisFlow各个FlowID被调度的次数"
+
+	GANGE_FUNC_SCHE_CNTS_NAME string = "func_schedule_cnts"
+	GANGE_FUNC_SCHE_CNTS_HELP string = "KisFlow各个Function被调度的次数"
+
+	HISTOGRAM_FUNCTION_DURATION_NAME string = "func_run_duration"
+	HISTOGRAM_FUNCTION_DURATION_HELP string = "Function执行耗时"
+
+	HISTOGRAM_FLOW_DURATION_NAME string = "flow_run_duration"
+	HISTOGRAM_FLOW_DURATION_HELP string = "Flow执行耗时"
 )

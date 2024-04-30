@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/patrickmn/go-cache"
+	"github.com/prometheus/client_golang/prometheus"
 	"kis-flow/common"
 	"kis-flow/config"
 	"kis-flow/conn"
@@ -12,6 +13,7 @@ import (
 	"kis-flow/id"
 	"kis-flow/kis"
 	"kis-flow/log"
+	"kis-flow/metrics"
 	"sync"
 	"time"
 )
@@ -40,12 +42,12 @@ type KisFlow struct {
 	buffer common.KisRowArr  // 用来临时存放输入字节数据的内部Buf, 一条数据为interface{}, 多条数据为[]interface{} 也就是KisBatch
 	data   common.KisDataMap // 流式计算各个层级的数据源
 	inPut  common.KisRowArr  // 当前Function的计算输入数据
-	// KisFlow Action
-	action kis.Action // 当前Flow所携带的Action动作
-	// +++++++++
-	abort bool // 是否中断Flow
+	abort  bool              // 是否中断Flow
+	action kis.Action        // 当前Flow所携带的Action动作
+
 	// flow的本地缓存
 	cache *cache.Cache // Flow流的临时缓存上线文环境
+
 	// flow的metaData
 	metaData map[string]interface{} // Flow的自定义临时数据
 	mLock    sync.RWMutex           // 管理metaData的读写锁
@@ -147,9 +149,13 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 	flow.abort = false
 
 	if flow.Conf.Status == int(common.FlowDisable) {
-		//flow被配置关闭
+		// flow被配置关闭
 		return nil
 	}
+
+	// Metrics
+	var funcStart time.Time
+	var flowStart time.Time
 
 	// 因为此时还没有执行任何Function, 所以PrevFunctionId为FirstVirtual 因为没有上一层Function
 	flow.PrevFunctionId = common.FunctionIdFirstVirtual
@@ -159,13 +165,32 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 		return err
 	}
 
-	//流式链式调用
+	// Metrics
+	if config.GlobalConfig.EnableProm == true {
+		// 统计Flow的调度次数
+		metrics.Metrics.FlowScheduleCntsToTal.WithLabelValues(flow.Name).Inc()
+		// 统计Flow的执行消耗时长
+		flowStart = time.Now()
+	}
+
+	// 流式链式调用
 	for fn != nil && flow.abort == false {
 
 		// flow记录当前执行到的Function 标记
 		fid := fn.GetId()
 		flow.ThisFunction = fn
 		flow.ThisFunctionId = fid
+
+		fName := fn.GetConfig().FName
+		fMode := fn.GetConfig().FMode
+
+		if config.GlobalConfig.EnableProm == true {
+			// 统计Function调度次数
+			metrics.Metrics.FuncScheduleCntsTotal.WithLabelValues(fName, fMode).Inc()
+
+			// 统计Function 耗时 记录开始时间
+			funcStart = time.Now()
+		}
 
 		// 得到当前Function要处理与的源数据
 		if inputData, err := flow.getCurData(); err != nil {
@@ -176,15 +201,35 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 		}
 
 		if err := fn.Call(ctx, flow); err != nil {
-			//Error
+			// Error
 			return err
 		} else {
-			//Success
+			// Success
 			fn, err = flow.dealAction(ctx, fn)
 			if err != nil {
 				return err
 			}
+
+			// 统计Function 耗时
+			if config.GlobalConfig.EnableProm == true {
+				// Function消耗时间
+				duration := time.Since(funcStart)
+
+				// 统计当前Function统计指标,做时间统计
+				metrics.Metrics.FunctionDuration.With(
+					prometheus.Labels{
+						common.LABEL_FUNCTION_NAME: fName,
+						common.LABEL_FUNCTION_MODE: fMode}).Observe(duration.Seconds() * 1000)
+			}
+
 		}
+	}
+
+	// Metrics
+	if config.GlobalConfig.EnableProm == true {
+		// 统计Flow执行耗时
+		duration := time.Since(flowStart)
+		metrics.Metrics.FlowDuration.WithLabelValues(flow.Name).Observe(duration.Seconds() * 1000)
 	}
 
 	return nil
@@ -225,6 +270,14 @@ func (flow *KisFlow) commitSrcData(ctx context.Context) error {
 
 	// 清空缓冲Buf
 	flow.buffer = flow.buffer[0:0]
+
+	// +++++++++++++++++++++++++++++++
+	// 首次提交数据源数据，进行统计数据总量
+	if config.GlobalConfig.EnableProm == true {
+		// 统计数据总量 Metrics.DataTota 指标累计加1
+		metrics.Metrics.DataTotal.Add(float64(dataCnt))
+	}
+	// ++++++++++++++++++++++++++++++
 
 	log.Logger().DebugFX(ctx, "====> After CommitSrcData, flow_name = %s, flow_id = %s\nAll Level Data =\n %+v\n", flow.Name, flow.Id, flow.data)
 
