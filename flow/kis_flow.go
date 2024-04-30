@@ -142,7 +142,6 @@ func (flow *KisFlow) appendFunc(function kis.Function, fParam config.FParam) err
 
 // Run 启动KisFlow的流式计算, 从起始Function开始执行流
 func (flow *KisFlow) Run(ctx context.Context) error {
-
 	var fn kis.Function
 
 	fn = flow.FlowHead
@@ -165,7 +164,7 @@ func (flow *KisFlow) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Metrics
+	// 判断是否开启监控 Metrics
 	if config.GlobalConfig.EnableProm == true {
 		// 统计Flow的调度次数
 		metrics.Metrics.FlowScheduleCntsToTal.WithLabelValues(flow.Name).Inc()
@@ -270,8 +269,6 @@ func (flow *KisFlow) commitSrcData(ctx context.Context) error {
 
 	// 清空缓冲Buf
 	flow.buffer = flow.buffer[0:0]
-
-	// +++++++++++++++++++++++++++++++
 	// 首次提交数据源数据，进行统计数据总量
 	if config.GlobalConfig.EnableProm == true {
 		// 统计数据总量 Metrics.DataTota 指标累计加1
@@ -426,8 +423,6 @@ func (flow *KisFlow) dealAction(ctx context.Context, fn kis.Function) (kis.Funct
 		}
 		flow.abort = false
 	}
-
-	// ++++++++++++++++++++++++++++++++
 	// JumpFunc Action
 	if flow.action.JumpFunc != "" {
 		if _, ok := flow.Funcs[flow.action.JumpFunc]; !ok {
@@ -442,8 +437,6 @@ func (flow *KisFlow) dealAction(ctx context.Context, fn kis.Function) (kis.Funct
 
 		// 如果设置跳跃，强制跳跃
 		flow.abort = false
-		// ++++++++++++++++++++++++++++++++
-
 	} else {
 
 		// 更新上一层 FuncitonId 游标
