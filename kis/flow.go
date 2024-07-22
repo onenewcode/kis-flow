@@ -12,19 +12,17 @@ type Flow interface {
 	Run(ctx context.Context) error
 	// Link 将Flow中的Function按照配置文件中的配置进行连接
 	Link(fConf *config.KisFuncConfig, fParams config.FParam) error
-	// CommitRow  ++++++ 提交Flow数据到即将执行的Function层 ++++
+	// CommitRow  提交Flow数据到即将执行的Function层
 	CommitRow(row interface{}) error
-	// ++++++++++++++++++++++
 	// Input 得到flow当前执行Function的输入源数据
 	Input() common.KisRowArr
-
-	// ++++++++++++++++++++++++++++++++++
 	// GetName 得到Flow的名称
 	GetName() string
 	// GetThisFunction 得到当前正在执行的Function
 	GetThisFunction() Function
 	// GetThisFuncConf 得到当前正在执行的Function的配置
-	GetThisFuncConf() *config.KisFuncConfig // GetFuncParamsAllFuncs 得到Flow中所有Function的FuncParams，取出全部Key-Value
+	GetThisFuncConf() *config.KisFuncConfig
+	// GetFuncParamsAllFuncs 得到Flow中所有Function的FuncParams，取出全部Key-Value
 	GetFuncParamsAllFuncs() map[string]config.FParam
 	// GetConnector 得到当前正在执行的Function的Connector
 	GetConnector() (Connector, error)

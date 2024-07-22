@@ -56,14 +56,9 @@ type KisFlow struct {
 // Link 将Function链接到Flow中
 // fConf: 当前Function策略
 // fParams: 当前Flow携带的Function动态参数
-// Link 将Function链接到Flow中
-// fConf: 当前Function策略
-// fParams: 当前Flow携带的Function动态参数
 func (flow *KisFlow) Link(fConf *config.KisFuncConfig, fParams config.FParam) error {
 	// 创建Function实例
 	f := function.NewKisFunction(flow, fConf)
-
-	// ++++++++++++++++++++++++++++++
 	if fConf.Option.CName != "" {
 		// 当前Function有Connector关联，需要初始化Connector实例
 
@@ -84,8 +79,6 @@ func (flow *KisFlow) Link(fConf *config.KisFuncConfig, fParams config.FParam) er
 		// 关联Function实例和Connector实例关系
 		_ = f.AddConnector(connector)
 	}
-	// ++++++++++++++++++++++++++++++
-
 	// Flow 添加 Function
 	if err := flow.appendFunc(f, fParams); err != nil {
 		return err
@@ -274,8 +267,6 @@ func (flow *KisFlow) commitSrcData(ctx context.Context) error {
 		// 统计数据总量 Metrics.DataTota 指标累计加1
 		metrics.Metrics.DataTotal.Add(float64(dataCnt))
 	}
-	// ++++++++++++++++++++++++++++++
-
 	log.Logger().DebugFX(ctx, "====> After CommitSrcData, flow_name = %s, flow_id = %s\nAll Level Data =\n %+v\n", flow.Name, flow.Id, flow.data)
 
 	return nil
@@ -386,7 +377,7 @@ func NewKisFlow(conf *config.KisFlowConfig) kis.Flow {
 	flow.Funcs = make(map[string]kis.Function)
 	flow.funcParams = make(map[string]config.FParam)
 
-	// ++++++++ 数据data +++++++
+	//  数据data
 	flow.data = make(common.KisDataMap)
 	// 初始化临时数据
 	flow.metaData = make(map[string]interface{})
