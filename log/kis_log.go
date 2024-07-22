@@ -2,6 +2,7 @@ package log
 
 import "context"
 
+// 日志通用接口
 type KisLogger interface {
 	// InfoFX 有上下文的Info级别日志接口, format字符串格式
 	InfoFX(ctx context.Context, str string, v ...interface{})
@@ -26,7 +27,7 @@ func SetLogger(newlog KisLogger) {
 	kisLog = newlog
 }
 
-// Logger 获取到kisLog对象
+// Logger 获取到kisLog对象,提供给外部使用
 func Logger() KisLogger {
 	return kisLog
 }

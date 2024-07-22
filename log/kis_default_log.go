@@ -6,6 +6,7 @@ import (
 )
 
 // kisDefaultLog 默认提供的日志对象
+// 暂时只打印在命令行
 type kisDefaultLog struct{}
 
 func (log *kisDefaultLog) InfoF(str string, v ...interface{}) {
