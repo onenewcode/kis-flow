@@ -25,13 +25,12 @@ type KisFuncOption struct {
 
 // KisFuncConfig 一个KisFunction策略配置
 type KisFuncConfig struct {
-	KisType string        `yaml:"kistype"`
-	FName   string        `yaml:"fname"`
-	FMode   string        `yaml:"fmode"`
-	Source  KisSource     `yaml:"source"`
-	Option  KisFuncOption `yaml:"option"`
-	// ++++++++++
-	connConf *KisConnConfig
+	KisType  string         `yaml:"kistype"`
+	FName    string         `yaml:"fname"`
+	FMode    string         `yaml:"fmode"`
+	Source   KisSource      `yaml:"source"`
+	Option   KisFuncOption  `yaml:"option"`
+	connConf *KisConnConfig // 初始化后进行手动配置
 }
 
 func (fConf *KisFuncConfig) AddConnConfig(cConf *KisConnConfig) error {
@@ -43,7 +42,9 @@ func (fConf *KisFuncConfig) AddConnConfig(cConf *KisConnConfig) error {
 	fConf.connConf = cConf
 
 	// Connector需要和Function进行关联
-	_ = cConf.WithFunc(fConf)
+	if err := cConf.WithFunc(fConf); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -60,10 +61,8 @@ func (fConf *KisFuncConfig) GetConnConfig() (*KisConnConfig, error) {
 func NewFuncConfig(
 	funcName string, mode common.KisMode,
 	source *KisSource, option *KisFuncOption) *KisFuncConfig {
-
 	config := new(KisFuncConfig)
 	config.FName = funcName
-
 	if source == nil {
 		log.Logger().ErrorF("funcName NewConfig Error, source is nil, funcName = %s\n", funcName)
 		return nil

@@ -120,3 +120,25 @@ func init() {
 }
 ```
 这里在init()初始化方法中，会判断目前是否已经有设置全局的Logger对象，如果没有，KisFlow会默认选择kisDefaultLog 作为全局Logger日志对象。
+
+# config
+在KisFlow中，我们定义了三种核心模块，分别是KisFunction, KisFlow, KisConnector ，所以KisConfig也分别需要针对三个模块进行定义。
+## 配置文件定义
+```yaml
+kistype: func # func, flow, connector
+fname: 测试KisFunction_S1 # 函数名称
+fmode: Save # Save, Update, Delete
+source: # 源数据源
+  name: 被校验的测试数据源1-用户订单维度 # 数据源名称
+  must: # 必须字段
+    - userid
+    - orderid
+    
+option: # 配置项
+  cname: 测试KisConnector_1  # 连接器名称
+  retry_times: 3 # 重试次数
+  retry_duration: 500 # 重试间隔
+  default_params: # 默认参数
+    default1: default1_param
+    default2: default2_param
+```

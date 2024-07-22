@@ -20,6 +20,7 @@ const (
 
 type KisMode string
 
+// 定义配置中的KisFunction的运行模式的常量
 const (
 	// V 为校验特征的KisFunction, 主要进行数据的过滤，验证，字段梳理，幂等等前置数据处理
 	V KisMode = "Verify"
