@@ -61,11 +61,9 @@ func (conn *KisConnector) GetId() string {
 // NewKisConnector 根据配置策略创建一个KisConnector
 func NewKisConnector(config *config.KisConnConfig) *KisConnector {
 	conn := new(KisConnector)
-	conn.CId = id.KisID(common.KisIdTypeConnnector)
+	conn.CId = id.KisID(common.KisIdTypeConnector)
 	conn.CName = config.CName
 	conn.Conf = config
-
-	// +++++++++++++++++++++++++++++++++++
 	conn.metaData = make(map[string]interface{})
 
 	return conn
