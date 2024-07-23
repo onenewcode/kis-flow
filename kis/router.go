@@ -5,7 +5,7 @@ import (
 	"kis-flow/common"
 )
 
-// FaaS Function as a Service
+// Function回调业务函数原型
 type FaaS func(context.Context, Flow) error
 
 // funcRouter
