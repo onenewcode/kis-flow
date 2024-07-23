@@ -123,7 +123,6 @@ func (base *BaseFunction) CreateId() {
 func NewKisFunction(flow kis.Flow, config *config.KisFuncConfig) kis.Function {
 	var f kis.Function
 
-	//工厂生产泛化对象
 	switch common.KisMode(config.FMode) {
 	case common.V:
 		f = NewKisFunctionV()
@@ -136,19 +135,13 @@ func NewKisFunction(flow kis.Flow, config *config.KisFuncConfig) kis.Function {
 	case common.E:
 		f = NewKisFunctionE()
 	default:
-		//LOG ERROR
 		return nil
 	}
 
-	// 生成随机实例唯一ID
 	f.CreateId()
-
-	// 设置基础信息属性
 	if err := f.SetConfig(config); err != nil {
 		panic(err)
 	}
-
-	// 设置Flow
 	if err := f.SetFlow(flow); err != nil {
 		panic(err)
 	}
