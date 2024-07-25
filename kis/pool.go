@@ -31,7 +31,6 @@ type kisPool struct {
 var _pool *kisPool
 
 // Pool 单例构造
-// Pool 单例构造
 func Pool() *kisPool {
 	_poolOnce.Do(func() {
 		//创建kisPool对象
@@ -148,6 +147,7 @@ func (pool *kisPool) CaaS(cname string, fname string, mode common.KisMode, c Caa
 	if _, ok := pool.cTree[cname][mode][fname]; !ok {
 		pool.cTree[cname][mode][fname] = c
 	} else {
+		// 不存在，返回错误
 		errString := fmt.Sprintf("CaaS Repeat CName=%s, FName=%s, Mode =%s\n", cname, fname, mode)
 		panic(errString)
 	}
