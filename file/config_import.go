@@ -14,12 +14,16 @@ import (
 	"path/filepath"
 )
 
+// 全部配置
 type allConfig struct {
 	Flows map[string]*config.KisFlowConfig
 	Funcs map[string]*config.KisFuncConfig
 	Conns map[string]*config.KisConnConfig
 }
 
+// confData：是文件二进制数据
+// fileName：是文件路径
+// kistype: 为配置文件类别
 // kisTypeFlowConfigure 解析Flow配置文件，yaml格式
 func kisTypeFlowConfigure(all *allConfig, confData []byte, fileName string, kisType interface{}) error {
 	flowCfg := new(config.KisFlowConfig)
@@ -112,7 +116,7 @@ func parseConfigWalkYaml(loadPath string) (*allConfig, error) {
 		confMap := make(map[string]interface{})
 
 		// 校验yaml合法性
-		if err := yaml.Unmarshal(confData, confMap); err != nil {
+		if err = yaml.Unmarshal(confData, confMap); err != nil {
 			return err
 		}
 
@@ -185,7 +189,7 @@ func ConfigImportYaml(loadPath string) error {
 		newFlow := flow.NewKisFlow(flowConfig)
 
 		for _, fp := range flowConfig.Flows {
-			if err := buildFlow(all, fp, newFlow, flowName); err != nil {
+			if err = buildFlow(all, fp, newFlow, flowName); err != nil {
 				return err
 			}
 		}
