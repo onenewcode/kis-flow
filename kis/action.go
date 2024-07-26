@@ -8,17 +8,16 @@ type Action struct {
 	// 默认Next()为如果本层Function计算结果为0条数据，之后Function将不会继续执行
 	// ForceEntryNext 为忽略上述默认规则，没有数据强制进入下一层Function
 	ForceEntryNext bool
-	// ++++++++++
 	// JumpFunc 跳转到指定Function继续执行
 	JumpFunc string
 	// Abort 终止Flow的执行
 	Abort bool
 }
 
-// ActionFunc KisFlow Functional Option 类型
+// ActionFunc is the type for KisFlow Functional Option.
 type ActionFunc func(ops *Action)
 
-// LoadActions 加载Actions，依次执行ActionFunc操作函数
+// LoadActions loads Actions and sequentially executes the ActionFunc operations.
 func LoadActions(acts []ActionFunc) Action {
 	action := Action{}
 
@@ -29,15 +28,29 @@ func LoadActions(acts []ActionFunc) Action {
 	for _, act := range acts {
 		act(&action)
 	}
+
 	return action
 }
 
-// ActionAbort 终止Flow的执行
-func ActionAbort(action *Action) {
-	action.Abort = true
-}
-
-// ActionDataReuse Next复用上层Function数据Option
+// ActionDataReuse sets the option for reusing data from the upper Function.
 func ActionDataReuse(act *Action) {
 	act.DataReuse = true
+}
+
+// ActionForceEntryNext sets the option to forcefully enter the next layer.
+func ActionForceEntryNext(act *Action) {
+	act.ForceEntryNext = true
+}
+
+// ActionJumpFunc returns an ActionFunc function and sets the funcName to Action.JumpFunc.
+// (Note: This can easily lead to Flow loop calls, causing an infinite loop.)
+func ActionJumpFunc(funcName string) ActionFunc {
+	return func(act *Action) {
+		act.JumpFunc = funcName
+	}
+}
+
+// ActionAbort terminates the execution of the Flow.
+func ActionAbort(action *Action) {
+	action.Abort = true
 }
